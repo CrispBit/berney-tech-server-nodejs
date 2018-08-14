@@ -58,7 +58,7 @@ module.exports = function (app, passport) {
                     if (err) {
                         return next(err);
                     }
-                    return res.status(200).json(user);
+                    return res.status(200).json("OK");
                 })
             }
         })(req, res, next);
@@ -94,13 +94,7 @@ module.exports = function (app, passport) {
         });
     });
 
-    app.use(passport.initialize());
-    app.use(passport.session());
-
     router.get('/get', function (req, res) {
-        console.log(req.cookies);
-        console.log(req.isAuthenticated());
-        console.log(req.user);
         if (req.user) {
             res.status(200).send(req.user);
         } else {
