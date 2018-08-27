@@ -89,7 +89,13 @@ module.exports = function (app, passport) {
                 passwordHash: hash,
             };
             models.User.create(user).then((doc) => {
-                res.status(200).json("OK");
+                req.login(user, function (err) {
+                    if (!err) {
+                        res.status(200).json("Successful login after signup");
+                    } else {
+                        res.status(500).json([{param: "user_login", msg: "Failed to login after signup"}]);
+                    }
+                })
             });
         });
     });
