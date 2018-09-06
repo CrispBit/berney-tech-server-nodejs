@@ -8,7 +8,7 @@ const router = express.Router();
 
 const { check, validationResult } = require('express-validator/check');
 
-module.exports = function (app, passport) {
+module.exports = function (app, passport, stripe) {
     passport.use(new passport.Strategy({
             usernameField: 'email',
             passwordField: 'password',
@@ -40,10 +40,20 @@ module.exports = function (app, passport) {
     });
 
     passport.deserializeUser(function (_id, done) {
-        console.log()
-        models.User.findById(_id, function (err, user) {
-            delete user.passwordHash;
-            done(err, user);
+        models.User.findById(_id, function (err, rawUser) {
+            let user = {
+                firstName: rawUser.firstName,
+                lastName: rawUser.lastName,
+                email: rawUser.email,
+            };
+            stripe.customers.retrieve(rawUser.stripeId, function (err, customer) {
+                if (customer.subscriptions.total_count) {
+                    user.subscription = customer.subscriptions.data[0].plan.nickname;
+                }  else {
+                    user.subscription = "None";
+                }
+                done(err, user);
+            });
         });
     });
 
@@ -81,22 +91,41 @@ module.exports = function (app, passport) {
         if (!errors.isEmpty()) {
             return res.status(422).json({ errors: errors.array() });
         }
-        models.User.hashPassword(req.body.password).then(function (hash) {
-            const user = {
-                _id: req.body.email,
-                firstName: req.body.firstName,
-                lastName: req.body.lastName,
-                passwordHash: hash,
-            };
-            models.User.create(user).then((doc) => {
-                req.login(user, function (err) {
-                    if (!err) {
-                        res.status(200).json("Successful login after signup");
-                    } else {
-                        res.status(500).json([{param: "user_login", msg: "Failed to login after signup"}]);
-                    }
-                })
-            });
+        models.User.findById(req.body.email, function (err, doc) {
+            if (err) {
+                return res.status(500).json({errors: [{param: "email_check", msg: "Error accessing database"}]});
+            }
+            if (doc) {
+                return res.status(400).json({specialErrors: [{param: "email_check", type: "user_exists"}]});
+            } else {
+                models.User.hashPassword(req.body.password).then(function (hash) {
+                    stripe.customers.create({
+                        description: "Customer for " + req.body.email,
+                        email: req.body.email,
+                    }, function (err, customer) {
+                        if (err) {
+                            res.status(500).json({errors: [{param: "stripe_customer_creation", msg: err}]});
+                        } else {
+                            const user = {
+                                _id: req.body.email,
+                                firstName: req.body.firstName,
+                                lastName: req.body.lastName,
+                                passwordHash: hash,
+                                stripeId: customer.id,
+                            };
+                            models.User.create(user).then((doc) => {
+                                req.login(user, function (err) {
+                                    if (!err) {
+                                        res.status(200).json("Successful login after signup");
+                                    } else {
+                                        res.status(500).json({errors: [{param: "user_login", msg: "Failed to login after signup"}]});
+                                    }
+                                })
+                            });
+                        }
+                    });
+                });
+            }
         });
     });
 

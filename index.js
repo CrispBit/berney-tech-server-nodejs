@@ -14,6 +14,8 @@ const MongoStore = require('connect-mongo')(session);
 
 const cookieParser = require('cookie-parser');
 
+const stripe = require('stripe')(process.env.STRIPE_API_KEY);
+
 mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     dbName: "berney-tech",
@@ -54,6 +56,6 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.use('/api/auth', auth(app, passport));
+app.use('/api/auth', auth(app, passport, stripe));
 
 app.listen(process.env.PORT || 3000);
