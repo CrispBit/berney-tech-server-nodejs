@@ -9,6 +9,7 @@ const UserSchema = new mongoose.Schema({
     lastName: String,
     passwordHash: String,
     stripeId: String,
+    accessLevel: Number,
 });
 
 UserSchema.methods.verifyPassword = function (password) {

@@ -6,6 +6,7 @@ const passport = require('passport');
 passport.Strategy = require('passport-local').Strategy;
 
 const auth = require('./routes/auth');
+const admin = require('./routes/admin');
 const models = require('./models/models');
 
 const app = express();
@@ -57,5 +58,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/api/auth', auth(app, passport, stripe));
+app.use('/api/admin', admin(app, passport, stripe));
 
 app.listen(process.env.PORT || 3000);

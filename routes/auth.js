@@ -45,6 +45,7 @@ module.exports = function (app, passport, stripe) {
                 firstName: rawUser.firstName,
                 lastName: rawUser.lastName,
                 email: rawUser.email,
+                accessLevel: rawUser.accessLevel,
             };
             stripe.customers.retrieve(rawUser.stripeId, function (err, customer) {
                 if (customer.subscriptions.total_count) {
@@ -112,6 +113,7 @@ module.exports = function (app, passport, stripe) {
                                 lastName: req.body.lastName,
                                 passwordHash: hash,
                                 stripeId: customer.id,
+                                accessLevel: 0,
                             };
                             models.User.create(user).then((doc) => {
                                 req.login(user, function (err) {
