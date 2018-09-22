@@ -3,6 +3,17 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
+const TicketSchema = new mongoose.Schema({
+    categories: [String],
+    author: {
+        type: String,
+        ref: "UserSchema",
+        required: true,
+    },
+})
+
+const Ticket = mongoose.model("Ticket", TicketSchema);
+
 const UserSchema = new mongoose.Schema({
     _id: String, // email
     firstName: String,
@@ -10,6 +21,11 @@ const UserSchema = new mongoose.Schema({
     passwordHash: String,
     stripeId: String,
     accessLevel: Number,
+    tickets: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "TicketSchema",
+        required: true,
+    }],
 });
 
 UserSchema.methods.verifyPassword = function (password) {
@@ -23,5 +39,6 @@ UserSchema.statics.hashPassword = function (password) {
 const User = mongoose.model("User", UserSchema);
 
 module.exports = {
-    User: User,
+    User,
+    Ticket,
 };

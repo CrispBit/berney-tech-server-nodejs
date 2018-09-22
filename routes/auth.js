@@ -44,7 +44,7 @@ module.exports = function (app, passport, stripe) {
             let user = {
                 firstName: rawUser.firstName,
                 lastName: rawUser.lastName,
-                email: rawUser.email,
+                email: rawUser._id,
                 accessLevel: rawUser.accessLevel,
             };
             stripe.customers.retrieve(rawUser.stripeId, function (err, customer) {
@@ -133,9 +133,9 @@ module.exports = function (app, passport, stripe) {
 
     router.get('/get', function (req, res) {
         if (req.user) {
-            res.status(200).send(req.user);
+            res.status(200).json(req.user);
         } else {
-            res.status(200).send("null");
+            res.status(200).json(null);
         }
     });
 
@@ -146,6 +146,38 @@ module.exports = function (app, passport, stripe) {
                 res.status(500).json("error logging out");
             } else {
                 res.status(200).json("OK");
+            }
+        });
+    });
+
+    router.post('/ticket/new', function (req, res) {
+        const ticket = {
+            categories: req.body.categories,
+            author: req.user.email,
+        }
+        models.Ticket.create(ticket, function (err, doc) {
+            if (err) {
+                res.status(500).json(err);
+            } else {
+                models.User.findByIdAndUpdate(doc.author, { $push: { tickets: doc._id } }, function (err, _) {
+                    if (err) {
+                        res.status(500).json(err);
+                    } else {
+                        res.status(200).json(doc);
+                    }
+                });
+            }
+        });
+    });
+
+    router.get('/ticket/view/:ticketId', function (req, res) {
+        models.Ticket.findById(req.params.ticketId, function (err, ticket) {
+            if (err) {
+                res.status(500).json(err);
+            } else if (!ticket.author == req.user._id) {
+                res.status(401).json("Not Authorized");
+            } else {
+                res.status(200).send(ticket);
             }
         });
     });
