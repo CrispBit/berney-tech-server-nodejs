@@ -40,12 +40,13 @@ module.exports = function (app, passport, stripe) {
     });
 
     passport.deserializeUser(function (_id, done) {
-        models.User.findById(_id, function (err, rawUser) {
+        models.User.findById(_id).populate('tickets').exec(function (err, rawUser) {
             let user = {
                 firstName: rawUser.firstName,
                 lastName: rawUser.lastName,
                 email: rawUser._id,
                 accessLevel: rawUser.accessLevel,
+                tickets: rawUser.tickets,
             };
             stripe.customers.retrieve(rawUser.stripeId, function (err, customer) {
                 if (customer.subscriptions.total_count) {
@@ -171,13 +172,40 @@ module.exports = function (app, passport, stripe) {
     });
 
     router.get('/ticket/view/:ticketId', function (req, res) {
-        models.Ticket.findById(req.params.ticketId, function (err, ticket) {
-            if (err) {
-                res.status(500).json(err);
-            } else if (!ticket.author == req.user._id) {
+        models.Ticket.findById(req.params.ticketId)
+            .populate({ path: 'messages', populate: { path: 'author' } })
+            .exec(
+                function (err, ticket) {
+                    if (err) {
+                        res.status(500).json(err);
+                    } else if (!ticket.author == req.user._id) {
+                        res.status(401).json("Not Authorized");
+                    } else {
+                        res.status(200).send(ticket);
+                    }
+                }
+            );
+    });
+
+    router.post('/ticket/message/new', function (req, res) {
+        models.Ticket.findById(req.body.ticketId, function (err, ticket) {
+            if (ticket.author != req.user._id && !req.user.accessLevel) {
                 res.status(401).json("Not Authorized");
             } else {
-                res.status(200).send(ticket);
+                const messageData = {
+                    ticketRef: ticket._id,
+                    author: req.user.email,
+                    body: req.body.messageBody,
+                };
+                models.Message.create(messageData, function (err, message) {
+                    ticket.update({ $push: { messages: message._id } }, function (err, _) {
+                        if (err) {
+                            res.status(500).json(err);
+                        } else {
+                            res.status(200).json(message);
+                        }
+                    });
+                });
             }
         });
     });

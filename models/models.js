@@ -7,9 +7,14 @@ const TicketSchema = new mongoose.Schema({
     categories: [String],
     author: {
         type: String,
-        ref: "UserSchema",
+        ref: "User",
         required: true,
     },
+    messages: [{
+        type: String,
+        ref: "Message",
+        required: true,
+    }],
 })
 
 const Ticket = mongoose.model("Ticket", TicketSchema);
@@ -23,7 +28,7 @@ const UserSchema = new mongoose.Schema({
     accessLevel: Number,
     tickets: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "TicketSchema",
+        ref: "Ticket",
         required: true,
     }],
 });
@@ -38,7 +43,24 @@ UserSchema.statics.hashPassword = function (password) {
 
 const User = mongoose.model("User", UserSchema);
 
+const MessageSchema = new mongoose.Schema({
+    ticketRef: {
+        type: String,
+        ref: "Ticket",
+        required: true,
+    },
+    author: {
+        type: String,
+        ref: "User",
+        required: true,
+    },
+    body: String,
+});
+
+const Message = mongoose.model("Message", MessageSchema);
+
 module.exports = {
     User,
     Ticket,
+    Message,
 };
